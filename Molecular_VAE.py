@@ -12,7 +12,6 @@ import os
 import pandas as pd
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from sklearn import model_selection
 import matplotlib.pyplot as plt
 from os import path
 
@@ -30,6 +29,7 @@ def plot_losses(losses, folder: str = "plot", filename: str = "checkpoint.png"):
     plt.savefig(f"{folder}/{filename}")
     plt.close()
 
+
 def load_dataset(filename, split=True):
     df = pd.read_csv(filename)
     names = df['name'].tolist()
@@ -44,7 +44,8 @@ def load_dataset(filename, split=True):
     names_output = [(s).ljust(max_len, PAD) for s in names]
     names_output = [list(map(c_to_n_vocab.get, s))for s in names_output]
     names_output = torch.LongTensor(names_output)
-    names_output = torch.nn.functional.one_hot(names_output, len(chars)).type(torch.FloatTensor)
+    names_output = torch.nn.functional.one_hot(
+        names_output, len(chars)).type(torch.FloatTensor)
 
     return names_output, c_to_n_vocab, n_to_c_vocab, max_len
 
@@ -99,6 +100,7 @@ def vae_loss(x_decoded_mean, x, z_mean, z_logvar):
     kl_loss = -0.5 * torch.sum(1 + z_logvar - z_mean.pow(2) - z_logvar.exp())
     return xent_loss + kl_loss
 
+
 def train(epoch):
     model.train()
     train_loss = []
@@ -113,11 +115,12 @@ def train(epoch):
 
         if batch_idx % save_every == 0:
             torch.save(model.state_dict(), save_path)
-            plot_losses(train_loss, filename = f'{sess_name}.png')
-    
+            plot_losses(train_loss, filename=f'{sess_name}.png')
+
     torch.save(model.state_dict(), save_path)
     print('train', train_loss / len(train_loader.dataset))
     return train_loss / len(train_loader.dataset)
+
 
 data_train, c_to_n_vocab, n_to_c_vocab, max_len = load_dataset(
     'data/first.csv')
