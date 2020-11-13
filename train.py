@@ -41,11 +41,11 @@ data_train, c_to_n_vocab, n_to_c_vocab, max_len, pad_idx = load_dataset(
     'data/first.csv')
 data_train = torch.utils.data.TensorDataset(data_train)
 train_loader = torch.utils.data.DataLoader(
-    data_train, batch_size=250, shuffle=True)
+    data_train, batch_size=150, shuffle=True)
 
 torch.manual_seed(42)
 
-sess_name = 'test'
+sess_name = 'no_tf'
 save_every = 100
 epochs = 10000
 weights_folder = 'weight'
@@ -56,7 +56,7 @@ if not path.exists(weights_folder):
 save_path = f'{weights_folder}/{sess_name}.path.tar'
 
 model = MolecularVAE(max_len, c_to_n_vocab).to(device)
-model.load_state_dict(torch.load('weight/test.path.tar'))
+#model.load_state_dict(torch.load('weight/test.path.tar'))
 optimizer = optim.Adam(model.parameters(), lr=1e-20)
 
 
