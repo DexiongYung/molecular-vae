@@ -37,6 +37,12 @@ class MolecularVAE(nn.Module):
         self.selu = nn.SELU()
         self.softmax = nn.Softmax()
 
+        nn.init.xavier_normal_(self.linear_0.weight)
+        nn.init.xavier_normal_(self.linear_1.weight)
+        nn.init.xavier_normal_(self.linear_2.weight)
+        nn.init.xavier_normal_(self.linear_3.weight)
+        nn.init.xavier_normal_(self.linear_4.weight)
+
     def encode(self, x):
         x = self.selu(self.conv_1(x))
         x = self.selu(self.conv_2(x))
@@ -66,9 +72,9 @@ class MolecularVAE(nn.Module):
                     out, hn = self.gru_last(tf_input[:, i, :].unsqueeze(1), hn)
                     all_outs = torch.cat((all_outs, out), dim=1)
 
-            out_reshape = output.contiguous().view(-1, output.size(-1))
+            out_reshape = all_outs.contiguous().view(-1, output.size(-1))
             y0 = F.softmax(self.linear_4(out_reshape), dim=1)
-            y = y0.contiguous().view(output.size(0), -1, y0.size(-1))
+            y = y0.contiguous().view(all_outs.size(0), -1, y0.size(-1))
             return y
         else:
             batch_sz = z.shape[0]
