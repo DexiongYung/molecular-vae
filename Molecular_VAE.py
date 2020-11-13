@@ -113,7 +113,7 @@ def train(epoch):
 
         if batch_idx % save_every == 0:
             torch.save(model.state_dict(), save_path)
-            plot_loss(train_loss, filename = f'{name}.png')
+            plot_losses(train_loss, filename = f'{sess_name}.png')
     
     torch.save(model.state_dict(), save_path)
     print('train', train_loss / len(train_loader.dataset))
