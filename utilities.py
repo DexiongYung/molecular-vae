@@ -23,7 +23,7 @@ def plot_losses(losses, folder: str = "plot", filename: str = "checkpoint.png"):
     plt.close()
 
 
-def load_dataset(filename, split=True):
+def load_dataset(filename, ret_idx_tensor: bool = False):
     df = pd.read_csv(filename)
     names = df['name'].tolist()
     max_len = len(max(names, key=len))
@@ -34,11 +34,14 @@ def load_dataset(filename, split=True):
 
     names_output = [(s).ljust(max_len, PAD) for s in names]
     names_output = [list(map(c_to_n_vocab.get, s))for s in names_output]
-    names_output = torch.LongTensor(names_output)
+    idx_tensor = torch.LongTensor(names_output)
     names_output = torch.nn.functional.one_hot(
-        names_output, len(chars)).type(torch.FloatTensor)
-
-    return names_output, c_to_n_vocab, n_to_c_vocab, max_len, pad_idx
+        idx_tensor, len(chars)).type(torch.FloatTensor)
+    
+    if ret_idx_tensor:
+        return names_output, c_to_n_vocab, n_to_c_vocab, max_len, pad_idx, idx_tensor
+    else:    
+        return names_output, c_to_n_vocab, n_to_c_vocab, max_len, pad_idx
 
 def load_vocab():
     c_to_n_vocab = dict(zip(chars, range(len(chars))))
