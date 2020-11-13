@@ -39,6 +39,16 @@ def load_dataset(filename, ret_idx_tensor: bool = False):
         idx_tensor, len(chars)).type(torch.FloatTensor)
     
     if ret_idx_tensor:
+        names_idx = []
+        for name in names:
+            name = PAD + name
+
+            if len(name) > max_len:
+                name = name[:-1]
+                names_idx.append(list(map(c_to_n_vocab.get, name)))
+            else:
+                names_idx.append(list(map(c_to_n_vocab.get, (name).ljust(max_len, PAD))))
+        idx_tensor = torch.LongTensor(names_idx)
         return names_output, c_to_n_vocab, n_to_c_vocab, max_len, pad_idx, idx_tensor
     else:    
         return names_output, c_to_n_vocab, n_to_c_vocab, max_len, pad_idx

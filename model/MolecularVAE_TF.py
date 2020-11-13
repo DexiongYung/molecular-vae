@@ -48,29 +48,38 @@ class MolecularVAE(nn.Module):
         epsilon = 1e-2 * torch.randn_like(z_logvar)
         return torch.exp(0.5 * z_logvar) * epsilon + z_mean
 
-    def decode(self, z, x_idx_tensor):
+    def decode(self, z, x_idx_tensor: torch.Tensor = None):
         z = F.selu(self.linear_3(z))
         z = z.view(z.size(0), 1, z.size(-1)).repeat(1, self.max_len, 1)
-
-        x_embed = self.char_embedder(x_idx_tensor)
         output, hn = self.gru(z)
 
-        tf_input = torch.cat((output, x_embed), dim=2)
-        all_outs = None
-        for i in range(self.max_len):
-            if i == 0:
-                out, hn = self.gru_last(tf_input[:,i,:].unsqueeze(1))
-                all_outs = out
-            else:
-                out, hn = self.gru_last(tf_input[:,i,:].unsqueeze(1), hn)
-                all_outs = torch.cat((all_outs, out), dim=1)
-            
-        out_reshape = output.contiguous().view(-1, output.size(-1))
-        y0 = F.softmax(self.linear_4(out_reshape), dim=1)
-        y = y0.contiguous().view(output.size(0), -1, y0.size(-1))
-        return y
+        if x_idx_tensor is not None:
+            x_embed = self.char_embedder(x_idx_tensor)
+            tf_input = torch.cat((output, x_embed), dim=2)
+            all_outs = None
+            for i in range(self.max_len):
+                if i == 0:
+                    out, hn = self.gru_last(tf_input[:,i,:].unsqueeze(1))
+                    all_outs = out
+                else:
+                    out, hn = self.gru_last(tf_input[:,i,:].unsqueeze(1), hn)
+                    all_outs = torch.cat((all_outs, out), dim=1)
+                
+            out_reshape = output.contiguous().view(-1, output.size(-1))
+            y0 = F.softmax(self.linear_4(out_reshape), dim=1)
+            y = y0.contiguous().view(output.size(0), -1, y0.size(-1))
+            return y
+        else:
+            for i in range(self.max_len):
+                input = torch.cat((output[:,i,:], ), dim=2)
+                if i == 0:
+                    out, hn = self.gru_last(tf_input[:,i,:].unsqueeze(1))
+                    all_outs = out
+                else:
+                    out, hn = self.gru_last(tf_input[:,i,:].unsqueeze(1), hn)
+                    all_outs = torch.cat((all_outs, out), dim=1)
 
-    def forward(self, x, x_idx_tensor):
+    def forward(self, x, x_idx_tensor: torch.Tensor = None):
         z_mean, z_logvar = self.encode(x)
         z = self.sampling(z_mean, z_logvar)
         return self.decode(z, x_idx_tensor), z_mean, z_logvar
