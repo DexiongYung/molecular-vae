@@ -54,7 +54,7 @@ train_idx_loader = torch.utils.data.DataLoader(
 
 torch.manual_seed(42)
 
-sess_name = 'test'
+sess_name = 'tf'
 save_every = 100
 epochs = 10000
 weights_folder = 'weight'

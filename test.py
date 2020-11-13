@@ -26,4 +26,4 @@ names_output = torch.LongTensor(name)
 names_output = torch.nn.functional.one_hot(
     names_output, len(c_to_n_vocab)).type(torch.FloatTensor)
 
-test(names_output)
+print(test(names_output))
