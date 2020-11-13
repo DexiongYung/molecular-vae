@@ -57,7 +57,7 @@ save_path = f'{weights_folder}/{sess_name}.path.tar'
 
 model = MolecularVAE(max_len, c_to_n_vocab).to(device)
 model.load_state_dict(torch.load('weight/test.path.tar'))
-optimizer = optim.Adam(model.parameters())
+optimizer = optim.Adam(model.parameters(), lr=1e-8)
 
 
 for epoch in range(1, epochs + 1):

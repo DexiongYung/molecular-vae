@@ -19,10 +19,15 @@ class MolecularVAE(nn.Module):
         self.linear_0 = nn.Linear(270, 435)
         self.linear_1 = nn.Linear(435, 292)
         self.linear_2 = nn.Linear(435, 292)
-
         self.linear_3 = nn.Linear(292, 292)
         self.gru = nn.GRU(292, 501, 3, batch_first=True)
         self.linear_4 = nn.Linear(501, len(vocab))
+
+        nn.init.xavier_normal_(self.linear_0.weight)
+        nn.init.xavier_normal_(self.linear_1.weight)
+        nn.init.xavier_normal_(self.linear_2.weight)
+        nn.init.xavier_normal_(self.linear_3.weight)
+        nn.init.xavier_normal_(self.linear_4.weight)
 
         self.selu = nn.SELU()
         self.softmax = nn.Softmax()
