@@ -110,7 +110,7 @@ def train(epoch):
         output, mean, logvar = model(data)
         loss = vae_loss(output, data, mean, logvar)
         loss.backward()
-        train_loss.append(loss)
+        train_loss.append(loss.item())
         optimizer.step()
 
         if batch_idx % save_every == 0:
@@ -119,7 +119,7 @@ def train(epoch):
 
     torch.save(model.state_dict(), save_path)
     print('train', np.mean(train_loss) / len(train_loader.dataset))
-    return train_loss / len(train_loader.dataset)
+    return np.mean(train_loss) / len(train_loader.dataset)
 
 
 data_train, c_to_n_vocab, n_to_c_vocab, max_len = load_dataset(
