@@ -118,7 +118,7 @@ def train(epoch):
             plot_losses(train_loss, filename=f'{sess_name}.png')
 
     torch.save(model.state_dict(), save_path)
-    print('train', train_loss / len(train_loader.dataset))
+    print('train', np.mean(train_loss) / len(train_loader.dataset))
     return train_loss / len(train_loader.dataset)
 
 
