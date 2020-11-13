@@ -9,6 +9,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 PAD = ']'
 chars = string.ascii_letters + PAD
 
+
 def plot_losses(losses, folder: str = "plot", filename: str = "checkpoint.png"):
     if not path.exists(folder):
         os.mkdir(folder)
@@ -37,7 +38,7 @@ def load_dataset(filename, ret_idx_tensor: bool = False):
     idx_tensor = torch.LongTensor(names_output)
     names_output = torch.nn.functional.one_hot(
         idx_tensor, len(chars)).type(torch.FloatTensor)
-    
+
     if ret_idx_tensor:
         names_idx = []
         for name in names:
@@ -47,11 +48,13 @@ def load_dataset(filename, ret_idx_tensor: bool = False):
                 name = name[:-1]
                 names_idx.append(list(map(c_to_n_vocab.get, name)))
             else:
-                names_idx.append(list(map(c_to_n_vocab.get, (name).ljust(max_len, PAD))))
+                names_idx.append(
+                    list(map(c_to_n_vocab.get, (name).ljust(max_len, PAD))))
         idx_tensor = torch.LongTensor(names_idx)
         return names_output, c_to_n_vocab, n_to_c_vocab, max_len, pad_idx, idx_tensor
-    else:    
+    else:
         return names_output, c_to_n_vocab, n_to_c_vocab, max_len, pad_idx
+
 
 def load_vocab():
     c_to_n_vocab = dict(zip(chars, range(len(chars))))

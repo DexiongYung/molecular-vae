@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from utilities import device
 
 
 def vae_loss(x_decoded_mean, x, z_mean, z_logvar):
@@ -26,7 +27,7 @@ class MolecularVAE(nn.Module):
         self.gru_last = nn.GRU(501 + 200, 501, 1, batch_first=True)
         self.linear_4 = nn.Linear(501, len(vocab))
         self.vocab_size = len(vocab)
-
+        self.pad_idx = pad_idx
         self.char_embedder = nn.Embedding(
             num_embeddings=self.vocab_size,
             embedding_dim=embed_dim,
@@ -59,25 +60,36 @@ class MolecularVAE(nn.Module):
             all_outs = None
             for i in range(self.max_len):
                 if i == 0:
-                    out, hn = self.gru_last(tf_input[:,i,:].unsqueeze(1))
+                    out, hn = self.gru_last(tf_input[:, i, :].unsqueeze(1))
                     all_outs = out
                 else:
-                    out, hn = self.gru_last(tf_input[:,i,:].unsqueeze(1), hn)
+                    out, hn = self.gru_last(tf_input[:, i, :].unsqueeze(1), hn)
                     all_outs = torch.cat((all_outs, out), dim=1)
-                
+
             out_reshape = output.contiguous().view(-1, output.size(-1))
             y0 = F.softmax(self.linear_4(out_reshape), dim=1)
             y = y0.contiguous().view(output.size(0), -1, y0.size(-1))
             return y
         else:
+            batch_sz = z.shape[0]
+            char_inputs = torch.LongTensor(
+                [self.pad_idx] * batch_sz).to(device)
+            embed_char = self.char_embedder(char_inputs)
+            y = []
             for i in range(self.max_len):
-                input = torch.cat((output[:,i,:], ), dim=2)
+                input = torch.cat((output[:, i, :], embed_char), dim=1)
                 if i == 0:
-                    out, hn = self.gru_last(tf_input[:,i,:].unsqueeze(1))
-                    all_outs = out
+                    out, hn = self.gru_last(input.unsqueeze(1))
                 else:
-                    out, hn = self.gru_last(tf_input[:,i,:].unsqueeze(1), hn)
-                    all_outs = torch.cat((all_outs, out), dim=1)
+                    out, hn = self.gru_last(tf_input[:, i, :].unsqueeze(1), hn)
+
+                samples = torch.distributions.Categorical(
+                    out.squeeze(1)).sample()
+                embed_char = self.char_embedder(samples)
+
+                y.append(samples)
+
+            return y
 
     def forward(self, x, x_idx_tensor: torch.Tensor = None):
         z_mean, z_logvar = self.encode(x)
