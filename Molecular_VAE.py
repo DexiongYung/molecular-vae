@@ -133,10 +133,10 @@ epochs = 30
 weights_folder = 'weight'
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-if not path.exists('weight'):
-    os.mkdir('weight')
+if not path.exists(weights_folder):
+    os.mkdir(weights_folder)
 
-save_path = f'{weight_folder}/{sess_name}.path.tar'
+save_path = f'{weights_folder}/{sess_name}.path.tar'
 
 model = MolecularVAE(max_len, c_to_n_vocab).to(device)
 optimizer = optim.Adam(model.parameters())
