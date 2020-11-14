@@ -6,6 +6,7 @@ import os
 from os import path
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+SOS = '['
 PAD = ']'
 chars = string.ascii_letters + PAD
 
@@ -60,3 +61,46 @@ def load_vocab():
     c_to_n_vocab = dict(zip(chars, range(len(chars))))
     n_to_c_vocab = dict(zip(range(len(chars)), chars))
     return c_to_n_vocab, n_to_c_vocab, PAD
+
+
+def get_data_and_probs(n: str):
+    df = pd.read_csv(n)
+    names = df['name'].tolist()
+    name_probs = df['probs'].tolist()
+    chars = string.ascii_letters + PAD + SOS
+    c_to_n_vocab = dict(zip(chars, range(len(chars))))
+    n_to_c_vocab = dict(zip(range(len(chars)), chars))
+
+    sos_idx = c_to_n_vocab[SOS]
+    pad_idx = c_to_n_vocab[PAD]
+
+    return names, name_probs, c_to_n_vocab, n_to_c_vocab, sos_idx, pad_idx
+
+
+def create_batch(all_names: list, probs_list: list, batch_size: int, vocab: dict):
+    # Name count part of facebook name data and used to create categorical to sample names from to generate batch
+    distribution = torch.distributions.Categorical(
+        torch.FloatTensor(probs_list))
+    names = [all_names[distribution.sample().item()]
+             for i in range(batch_size)]
+
+    seq_length = len(max(all_names, key=len))
+
+    names_input = [(s).ljust(seq_length, PAD) for s in names]
+    names_input = [list(map(vocab.get, s)) for s in names_input]
+    names_input = torch.LongTensor(names_input)
+    one_hot = torch.nn.functional.one_hot(
+        names_input, len(vocab)).type(torch.FloatTensor)
+
+    names_idx = []
+    for name in names:
+        name = SOS + name
+
+        if len(name) > seq_length:
+            name = name[:-1]
+            names_idx.append(list(map(vocab.get, name)))
+        else:
+            names_idx.append(
+                list(map(vocab.get, (name).ljust(seq_length, PAD))))
+
+    return one_hot, torch.LongTensor(names_idx), seq_length, vocab[PAD]
