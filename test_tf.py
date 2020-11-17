@@ -11,9 +11,12 @@ parser.add_argument('--name',
                     help='Person name to test', type=str, default='Michael')
 parser.add_argument('--weight_dir', help='save dir',
                     type=str, default='weight/')
+parser.add_argument('--eps', help='error from sampling',
+                    type=float, default=1e-2)
 args = parser.parse_args()
 
 json_file = json.load(open(f'json/{args.session_name}.json', 'r'))
+json_files['eps'] = args.eps
 t_args = argparse.Namespace()
 t_args.__dict__.update(json_file)
 args = parser.parse_args(namespace=t_args)
