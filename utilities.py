@@ -23,7 +23,7 @@ def plot_losses(losses, folder: str = "plot", filename: str = "checkpoint.png"):
 
 
 def load_dataset(filename: str, max_len: int, c_to_n_vocab: dict, SOS: str, PAD: str, return_idx: bool = False):
-    df = pd.read_csv(filename).iloc[0:5000]
+    df = pd.read_csv(filename)
     df = df[df['name'].str.len() <= max_len]
     names = df['name'].tolist()
     vocab_len = len(c_to_n_vocab)

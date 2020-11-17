@@ -30,7 +30,7 @@ parser.add_argument('--mlp_encod', help='MLP encoder size',
 parser.add_argument(
     '--word_embed', help='Word embedding size', type=int, default=200)
 parser.add_argument(
-    '--num_layers', help='number of rnn layer', type=int, default=3)
+    '--num_layers', help='number of rnn layer', type=int, default=5)
 parser.add_argument('--num_epochs', help='epochs', type=int, default=1000)
 parser.add_argument('--conv_kernals', nargs='+', default=[4, 4, 16])
 parser.add_argument('--conv_in_sz', nargs='+', default=[4, 4])
