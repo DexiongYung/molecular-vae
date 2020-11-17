@@ -13,7 +13,7 @@ def plot_losses(losses, folder: str = "plot", filename: str = "checkpoint.png"):
         os.mkdir(folder)
 
     x = list(range(len(losses)))
-    plt.plot(x, losses, 'b--', label="Unsupervised Loss")
+    plt.plot(x, losses, 'b--', label="VAE")
     plt.title("Loss Progression")
     plt.xlabel("Batch")
     plt.ylabel("Loss")
@@ -54,22 +54,17 @@ def load_dataset(filename: str, max_len: int, c_to_n_vocab: dict, SOS: str, PAD:
         return names_output
 
 
-def get_data_and_probs(n: str):
-    df = pd.read_csv(n)
-    names = df['name'].tolist()
-    name_probs = df['probs'].tolist()
-
-    return names, name_probs
-
-
-def create_batch(all_names: list, probs_list: list, batch_size: int, vocab: dict, SOS: str, PAD: str):
+def create_batch(csv_path: str, max_name: int, batch_size: int, vocab: dict, SOS: str, PAD: str):
     # Name count part of facebook name data and used to create categorical to sample names from to generate batch
+    df = pd.read_csv(csv_path)
+    names_list = df['name'].tolist()
+    probs_list = df['probs'].tolist()
     distribution = torch.distributions.Categorical(
         torch.FloatTensor(probs_list))
-    names = [all_names[distribution.sample().item()]
+    names = [names_list[distribution.sample().item()]
              for i in range(batch_size)]
 
-    seq_length = len(max(all_names, key=len))
+    seq_length = len(max(names_list, key=len))
 
     names_input = [(s).ljust(seq_length, PAD) for s in names]
     names_input = [list(map(vocab.get, s)) for s in names_input]
