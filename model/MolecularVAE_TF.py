@@ -11,26 +11,42 @@ def vae_loss(x_decoded_mean, x, z_mean, z_logvar):
 
 
 class MolecularVAE(nn.Module):
-    def __init__(self, max_len: int, vocab: dict, pad_idx: int):
+    def __init__(self, vocab: dict, sos_idx: int, pad_idx: int, args):
         super(MolecularVAE, self).__init__()
-        self.max_len = max_len
-        self.conv_1 = nn.Conv1d(max_len, 9, kernel_size=9)
-        self.conv_2 = nn.Conv1d(9, 9, kernel_size=9)
-        self.conv_3 = nn.Conv1d(9, 10, kernel_size=11)
-        self.linear_0 = nn.Linear(270, 435)
-        self.linear_1 = nn.Linear(435, 292)
-        self.linear_2 = nn.Linear(435, 292)
-
-        self.linear_3 = nn.Linear(292, 292)
-        self.gru = nn.GRU(292, 501, 3, batch_first=True)
-        embed_dim = 200
-        self.gru_last = nn.GRU(501 + 200, 501, 1, batch_first=True)
-        self.linear_4 = nn.Linear(501, len(vocab))
+        self.max_name_len = args.max_len
+        self.encoder_mlp_size = args.mlp_encod
+        self.latent_size = args.latent
+        self.num_layers = args.num_layers
+        self.embed_dim = args.word_embed
+        self.conv_in_c = args.conv_in_c
+        self.conv_out_c = args.conv_out_c
+        self.conv_kernals = args.conv_kernals
         self.vocab_size = len(vocab)
+        self.eps = args.eps
+
+        self.conv_1 = nn.Conv1d(max_name_len, conv_out_c=[
+                                0], kernel_size=conv_kernals[0])
+        self.conv_2 = nn.Conv1d(conv_in_c=[0], conv_out_c=[
+                                1], kernel_size=conv_kernals[1])
+        self.conv_3 = nn.Conv1d(conv_in_c=[0], conv_out_c=[
+                                2], kernel_size=conv_kernals[2])
+
+        self.linear_0 = nn.Linear(270, self.encoder_mlp_size)
+        self.linear_1 = nn.Linear(self.encoder_mlp_size, self.latent_size)
+        self.linear_2 = nn.Linear(self.encoder_mlp_size, self.latent_size)
+        self.linear_3 = nn.Linear(self.latent_size, self.latent_size)
+
+        self.gru = nn.GRU(args.rnn_hidd + args.latent,
+                          args.rnn_hidd, args.num_layers, batch_first=True)
+        self.gru_last = nn.GRU(args.rnn_hidd + self.embed_dim,
+                               args.rnn_hidd, 1, batch_first=True)
+        self.linear_4 = nn.Linear(args.rnn_hidd, self.vocab_size)
+
+        self.sos_idx = sos_idx
         self.pad_idx = pad_idx
         self.char_embedder = nn.Embedding(
             num_embeddings=self.vocab_size,
-            embedding_dim=embed_dim,
+            embedding_dim=self.embed_dim,
             padding_idx=pad_idx
         )
 
@@ -52,7 +68,7 @@ class MolecularVAE(nn.Module):
         return self.linear_1(x), self.linear_2(x)
 
     def sampling(self, z_mean, z_logvar):
-        epsilon = 1e-2 * torch.randn_like(z_logvar)
+        epsilon = self.eps * torch.randn_like(z_logvar)
         return torch.exp(0.5 * z_logvar) * epsilon + z_mean
 
     def decode(self, z, x_idx_tensor: torch.Tensor = None):
@@ -63,15 +79,7 @@ class MolecularVAE(nn.Module):
         if x_idx_tensor is not None:
             x_embed = self.char_embedder(x_idx_tensor)
             tf_input = torch.cat((output, x_embed), dim=2)
-            all_outs = None
-            for i in range(self.max_len):
-                if i == 0:
-                    out, hn = self.gru_last(tf_input[:, i, :].unsqueeze(1))
-                    all_outs = out
-                else:
-                    out, hn = self.gru_last(tf_input[:, i, :].unsqueeze(1), hn)
-                    all_outs = torch.cat((all_outs, out), dim=1)
-
+            all_outs = self.gru_last(tf_input)
             out_reshape = all_outs.contiguous().view(-1, output.size(-1))
             y0 = F.softmax(self.linear_4(out_reshape), dim=1)
             y = y0.contiguous().view(all_outs.size(0), -1, y0.size(-1))
@@ -79,7 +87,7 @@ class MolecularVAE(nn.Module):
         else:
             batch_sz = z.shape[0]
             char_inputs = torch.LongTensor(
-                [self.pad_idx] * batch_sz).to(device)
+                [self.sos_idx] * batch_sz).to(device)
             embed_char = self.char_embedder(char_inputs)
             y = []
             for i in range(self.max_len):
@@ -93,7 +101,9 @@ class MolecularVAE(nn.Module):
                     out.squeeze(1)).sample()
                 embed_char = self.char_embedder(samples)
 
-                y.append(samples)
+                y.append()
+
+            y = torch.Tensor(y)
 
             return y
 
