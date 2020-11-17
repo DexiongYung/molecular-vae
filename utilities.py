@@ -5,7 +5,7 @@ import torch
 import os
 from os import path
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 def plot_losses(losses, folder: str = "plot", filename: str = "checkpoint.png"):
@@ -23,19 +23,17 @@ def plot_losses(losses, folder: str = "plot", filename: str = "checkpoint.png"):
 
 
 def load_dataset(filename: str, max_len: int, c_to_n_vocab: dict, SOS: str, PAD: str, return_idx: bool = False):
-    df = pd.read_csv(filename)
-    df = df[(len(df['name']) < max_len)]
+    df = pd.read_csv(filename).iloc[0:5000]
+    df = df[df['name'].str.len() <= max_len]
     names = df['name'].tolist()
     vocab_len = len(c_to_n_vocab)
-    max_len = len(max(names, key=len))
-
-    pad_idx = c_to_n_vocab[PAD]
+    max_len = max_len
 
     names_output = [(s).ljust(max_len, PAD) for s in names]
     names_output = [list(map(c_to_n_vocab.get, s))for s in names_output]
     idx_tensor = torch.LongTensor(names_output)
     names_output = torch.nn.functional.one_hot(
-        idx_tensor, len(vocab_len)).type(torch.FloatTensor)
+        idx_tensor, vocab_len).type(torch.FloatTensor)
 
     if return_idx:
         names_idx = []
@@ -70,7 +68,7 @@ def get_data_and_probs(n: str, c_to_n_vocab: dict, n_to_c_vocab: dict, SOS: str,
     return names, name_probs, c_to_n_vocab, n_to_c_vocab, sos_idx, pad_idx
 
 
-def create_batch(all_names: list, probs_list: list, batch_size: int, vocab: dict, SOS, PAD):
+def create_batch(all_names: list, probs_list: list, batch_size: int, vocab: dict, SOS: str, PAD: str):
     # Name count part of facebook name data and used to create categorical to sample names from to generate batch
     distribution = torch.distributions.Categorical(
         torch.FloatTensor(probs_list))

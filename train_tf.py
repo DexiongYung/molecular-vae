@@ -18,13 +18,13 @@ from utilities import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--name',
-                    help='Session name', type=str, default='tf')
+                    help='Session name', type=str, default='argsparse')
 parser.add_argument('--max_name_length',
                     help='Max name generation length', type=int, default=30)
-parser.add_argument('--batch_size', help='batch_size', type=int, default=100)
+parser.add_argument('--batch_size', help='batch_size', type=int, default=200)
 parser.add_argument('--latent', help='latent_size', type=int, default=200)
 parser.add_argument(
-    '--RNN_hidd', help='unit_size of rnn cell', type=int, default=512)
+    '--rnn_hidd', help='unit_size of rnn cell', type=int, default=512)
 parser.add_argument('--mlp_encod', help='MLP encoder size',
                     type=int, default=512)
 parser.add_argument(
@@ -37,7 +37,7 @@ parser.add_argument('--conv_in_sz', nargs='+', default=[9, 9])
 parser.add_argument('--conv_out_sz', nargs='+', default=[9, 9, 10])
 parser.add_argument('--eps', help='error from sampling',
                     type=float, default=1e-2)
-parser.add_argument('--lr', help='learning rate', type=float, default=1e-8)
+parser.add_argument('--lr', help='learning rate', type=float, default=1e-12)
 parser.add_argument('--name_file', help='CSVs of names for training and testing',
                     type=str, default='data/first.csv')
 parser.add_argument('--weight_dir', help='save dir',
@@ -49,7 +49,7 @@ parser.add_argument('--continue_train',
 args = parser.parse_args()
 
 
-def train(epoch):
+def train():
     model.train()
     train_loss = []
     batch_num = len(train_loader)
@@ -58,8 +58,8 @@ def train(epoch):
     for i in range(batch_num):
         data = next(train_iterator)
         idx_data = next(train_idx_iterator)
-        data = data[0].to(device)
-        idx_data = idx_data[0].to(device)
+        data = data[0].to(DEVICE)
+        idx_data = idx_data[0].to(DEVICE)
         optimizer.zero_grad()
         output, mean, logvar = model(data, idx_data)
         loss = vae_loss(output, data, mean, logvar)
@@ -72,7 +72,6 @@ def train(epoch):
             plot_losses(train_loss, filename=f'{args.name}.png')
 
     torch.save(model.state_dict(), save_path)
-    print('train', np.mean(train_loss) / len(train_loader.dataset))
     return np.mean(train_loss) / len(train_loader.dataset)
 
 
@@ -92,8 +91,6 @@ train_loader = torch.utils.data.DataLoader(
     data_train, batch_size=args.batch_size, shuffle=False)
 train_idx_loader = torch.utils.data.DataLoader(
     idx_data_train, batch_size=args.batch_size, shuffle=False)
-
-torch.manual_seed(42)
 
 if args.continue_train:
     json_file = json.load(open(f'json/{args.name}.json', 'r'))
@@ -125,16 +122,13 @@ else:
     with open(f'json/{args.name}.json', 'w') as f:
         json.dump(vars(args), f)
 
-if not path.exists(args.weights_dir):
-    os.mkdir(args.weights_dir)
+if not path.exists(args.weight_dir):
+    os.mkdir(args.weight_dir)
 
-save_path = f'{args.weights_dirs}/{args.name}.path.tar'
+save_path = f'{args.weight_dir}/{args.name}.path.tar'
 
-model = MolecularVAE(c_to_n_vocab, sos_idx, pad_idx).to(device)
+model = MolecularVAE(c_to_n_vocab, sos_idx, pad_idx, args).to(DEVICE)
 optimizer = optim.Adam(model.parameters(), args.lr)
 
-if path.exists(save_path):
-    model.load_state_dict(torch.load(save_path))
-
-for epoch in range(1, args.num_epochs + 1):
-    train_loss = train(epoch)
+for epoch in range(args.num_epochs):
+    train_loss = train()
