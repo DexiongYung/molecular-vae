@@ -5,13 +5,15 @@ import argparse
 import json
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--name',
+parser.add_argument('--session_name',
                     help='Session name', type=str, default='argsparse')
+parser.add_argument('--name',
+                    help='Person name to test', type=str, default='Michael')
 parser.add_argument('--weight_dir', help='save dir',
                     type=str, default='weight/')
 args = parser.parse_args()
 
-json_file = json.load(open(f'json/{args.name}.json', 'r'))
+json_file = json.load(open(f'json/{args.session_name}.json', 'r'))
 t_args = argparse.Namespace()
 t_args.__dict__.update(json_file)
 args = parser.parse_args(namespace=t_args)
@@ -35,11 +37,11 @@ def test(test, idx_tensor):
 
 
 model = MolecularVAE(c_to_n_vocab, sos_idx, pad_idx, args).to(DEVICE)
-model.load(f'{args.weight_dir}/{args.name}')
+model.load(f'{args.weight_dir}/{args.session_name}')
 
-name = (SOS + 'Michael').ljust(max_len, PAD)
+name = (SOS + args.name).ljust(max_len, PAD)
 idx_name = [c_to_n_vocab[s] for s in name]
-name = ('Michael').ljust(max_len, PAD)
+name = (args.name).ljust(max_len, PAD)
 name = [c_to_n_vocab[s] for s in name]
 idx_tensor = torch.LongTensor(idx_name).unsqueeze(0).to(DEVICE)
 names_output = torch.LongTensor(name).unsqueeze(0)

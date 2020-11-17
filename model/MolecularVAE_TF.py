@@ -79,7 +79,7 @@ class MolecularVAE(nn.Module):
     def decode(self, z, idx_tensor: torch.Tensor = None):
         z = F.selu(self.linear_3(z))
         z = z.view(z.size(0), 1, z.size(-1)).repeat(1, self.max_name_len, 1)
-        output, hn = self.gru(z)
+        output, _ = self.gru(z)
 
         if idx_tensor is not None:
             x_embed = self.char_embedder(idx_tensor)
@@ -93,19 +93,26 @@ class MolecularVAE(nn.Module):
             char_inputs = torch.LongTensor(
                 [self.sos_idx] * batch_sz).to(DEVICE)
             embed_char = self.char_embedder(char_inputs)
-            y = []
+            y = None
             for i in range(self.max_len):
                 input = torch.cat((output[:, i, :], embed_char), dim=1)
                 if i == 0:
                     out, hn = self.gru_last(input.unsqueeze(1))
                 else:
-                    out, hn = self.gru_last(tf_input[:, i, :].unsqueeze(1), hn)
+                    out, hn = self.gru_last(input.unsqueeze(1), hn)
 
+                sm_out = F.softmax(self.linear_4(out), dim=1)
                 samples = torch.distributions.Categorical(
-                    out.squeeze(1)).sample()
+                    sm_out).sample()
+
+                if i == 0:
+                    y = sm_out
+                else:
+                    y = torch.cat(y, sm_out, dim=1)
+
                 embed_char = self.char_embedder(samples)
 
-                y.append()
+                y.append(out)
 
             y = torch.Tensor(y)
 
