@@ -54,18 +54,12 @@ def load_dataset(filename: str, max_len: int, c_to_n_vocab: dict, SOS: str, PAD:
         return names_output
 
 
-def get_data_and_probs(n: str, c_to_n_vocab: dict, n_to_c_vocab: dict, SOS: str, PAD: str):
+def get_data_and_probs(n: str):
     df = pd.read_csv(n)
     names = df['name'].tolist()
     name_probs = df['probs'].tolist()
-    chars = string.ascii_letters + PAD + SOS
-    c_to_n_vocab = dict(zip(chars, range(len(chars))))
-    n_to_c_vocab = dict(zip(range(len(chars)), chars))
 
-    sos_idx = c_to_n_vocab[SOS]
-    pad_idx = c_to_n_vocab[PAD]
-
-    return names, name_probs, c_to_n_vocab, n_to_c_vocab, sos_idx, pad_idx
+    return names, name_probs
 
 
 def create_batch(all_names: list, probs_list: list, batch_size: int, vocab: dict, SOS: str, PAD: str):
@@ -94,4 +88,4 @@ def create_batch(all_names: list, probs_list: list, batch_size: int, vocab: dict
             names_idx.append(
                 list(map(vocab.get, (name).ljust(seq_length, PAD))))
 
-    return one_hot, torch.LongTensor(names_idx), seq_length, vocab[PAD]
+    return one_hot, torch.LongTensor(names_idx)
