@@ -32,13 +32,13 @@ parser.add_argument(
 parser.add_argument(
     '--num_layers', help='number of rnn layer', type=int, default=5)
 parser.add_argument('--num_epochs', help='epochs', type=int, default=1000)
-parser.add_argument('--conv_kernals', nargs='+', default=[4, 4, 16])
-parser.add_argument('--conv_in_sz', nargs='+', default=[4, 4])
-parser.add_argument('--conv_out_sz', nargs='+', default=[4, 4, 5])
-parser.add_argument('--eps', help='error from sampling',
+parser.add_argument('--conv_kernals', nargs='+', default=[3, 3, 6])
+parser.add_argument('--conv_in_sz', nargs='+', default=[3, 3])
+parser.add_argument('--conv_out_sz', nargs='+', default=[3, 3, 6])
+parser.add_argument('--eps', help='error added to latent sampling',
                     type=float, default=1e-2)
 parser.add_argument('--lr', help='learning rate', type=float, default=1e-12)
-parser.add_argument('--name_file', help='CSVs of names for training and testing',
+parser.add_argument('--train_file', help='CSVs of names for training and testing',
                     type=str, default='data/first.csv')
 parser.add_argument('--weight_dir', help='save dir',
                     type=str, default='weight/')
@@ -84,7 +84,7 @@ sos_idx = c_to_n_vocab[SOS]
 pad_idx = c_to_n_vocab[PAD]
 
 name_in_out, idx_tensor = load_dataset(
-    args.name_file, args.max_name_length, c_to_n_vocab, SOS, PAD, True)
+    args.train_file, args.max_name_length, c_to_n_vocab, SOS, PAD, True)
 data_train = torch.utils.data.TensorDataset(name_in_out)
 idx_data_train = torch.utils.data.TensorDataset(idx_tensor)
 train_loader = torch.utils.data.DataLoader(

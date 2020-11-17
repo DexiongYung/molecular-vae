@@ -11,6 +11,9 @@ def vae_loss(x_decoded_mean, x, z_mean, z_sd):
 
 
 class MolecularVAE(nn.Module):
+    '''
+        MolecularVAE with teacher forcing
+    '''
     def __init__(self, vocab: dict, sos_idx: int, pad_idx: int, args):
         super(MolecularVAE, self).__init__()
         self.max_name_len = args.max_name_length
