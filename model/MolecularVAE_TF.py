@@ -4,9 +4,9 @@ import torch.nn.functional as F
 from utilities import DEVICE
 
 
-def vae_loss(x_decoded_mean, x, z_mean, z_logvar):
-    bce_loss = F.binary_cross_entropy(x_decoded_mean, x, size_average=False)
-    kl_loss = -0.5 * torch.sum(1 + z_logvar - z_mean.pow(2) - z_logvar.exp())
+def vae_loss(x_decoded_mean, x, z_mean, z_sd):
+    bce_loss = F.binary_cross_entropy(x_decoded_mean, x, reduction='sum')
+    kl_loss = -0.5 * torch.sum(1 + z_sd - z_mean.pow(2) - z_sd)
     return bce_loss + kl_loss
 
 
@@ -14,7 +14,7 @@ class MolecularVAE(nn.Module):
     def __init__(self, vocab: dict, sos_idx: int, pad_idx: int, args):
         super(MolecularVAE, self).__init__()
         self.max_name_len = args.max_name_length
-        self.encoder_mlp_size = args.mlp_encod
+        self.encoder_mlp_size = args.mlp_encode
         self.latent_size = args.latent
         self.num_layers = args.num_layers
         self.embed_dim = args.word_embed
@@ -36,16 +36,17 @@ class MolecularVAE(nn.Module):
         c3_out_sz = self.conv_out_c[2] * \
             ((c2_out_sz-(self.conv_kernals[2])) + 1)
 
-        self.linear_0 = nn.Linear(c3_out_sz, self.encoder_mlp_size)
-        self.linear_1 = nn.Linear(self.encoder_mlp_size, self.latent_size)
-        self.linear_2 = nn.Linear(self.encoder_mlp_size, self.latent_size)
-        self.linear_3 = nn.Linear(self.latent_size, self.latent_size)
+        self.encoder_layer = nn.Linear(c3_out_sz, self.encoder_mlp_size)
+        self.mean_layer = nn.Linear(self.encoder_mlp_size, self.latent_size)
+        self.sd_layer = nn.Linear(self.encoder_mlp_size, self.latent_size)
+        self.decoder_layer_start = nn.Linear(
+            self.latent_size, self.latent_size)
 
         self.gru = nn.LSTM(args.latent,
                            args.rnn_hidd, args.num_layers, batch_first=True)
         self.gru_last = nn.LSTM(args.rnn_hidd + self.embed_dim,
                                 args.rnn_hidd, 1, batch_first=True)
-        self.linear_4 = nn.Linear(args.rnn_hidd, self.vocab_size)
+        self.decode_layer_final = nn.Linear(args.rnn_hidd, self.vocab_size)
 
         self.sos_idx = sos_idx
         self.pad_idx = pad_idx
@@ -58,26 +59,26 @@ class MolecularVAE(nn.Module):
         self.selu = nn.SELU()
         self.softmax = nn.Softmax()
 
-        nn.init.xavier_normal_(self.linear_0.weight)
-        nn.init.xavier_normal_(self.linear_1.weight)
-        nn.init.xavier_normal_(self.linear_2.weight)
-        nn.init.xavier_normal_(self.linear_3.weight)
-        nn.init.xavier_normal_(self.linear_4.weight)
+        nn.init.xavier_normal_(self.encoder_layer.weight)
+        nn.init.xavier_normal_(self.mean_layer.weight)
+        nn.init.xavier_normal_(self.sd_layer.weight)
+        nn.init.xavier_normal_(self.decoder_layer_start.weight)
+        nn.init.xavier_normal_(self.decode_layer_final.weight)
 
     def encode(self, x):
-        x = self.selu(self.conv_1(x))
-        x = self.selu(self.conv_2(x))
-        x = self.selu(self.conv_3(x))
-        x = x.view(x.size(0), -1)
-        x = F.selu(self.linear_0(x))
-        return self.linear_1(x), self.linear_2(x)
+        x0 = self.selu(self.conv_1(x))
+        x1 = self.selu(self.conv_2(x0))
+        x2 = self.selu(self.conv_3(x1))
+        x3 = x2.view(x.size(0), -1)
+        x4 = F.selu(self.encoder_layer(x3))
+        return self.mean_layer(x4), F.softplus(self.sd_layer(x4))
 
-    def sampling(self, z_mean, z_logvar):
-        epsilon = self.eps * torch.randn_like(z_logvar)
-        return torch.exp(0.5 * z_logvar) * epsilon + z_mean
+    def sampling(self, z_mean, z_sd):
+        epsilon = self.eps * torch.randn_like(z_sd)
+        return z_sd * epsilon + z_mean
 
     def decode(self, z, idx_tensor: torch.Tensor = None):
-        z = F.selu(self.linear_3(z))
+        z = F.selu(self.decoder_layer_start(z))
         z = z.view(z.size(0), 1, z.size(-1)).repeat(1, self.max_name_len, 1)
         output, _ = self.gru(z)
 
@@ -86,7 +87,7 @@ class MolecularVAE(nn.Module):
             tf_input = torch.cat((output, x_embed), dim=2)
             all_outs, _ = self.gru_last(tf_input)
             out_reshape = all_outs.contiguous().view(-1, output.size(-1))
-            y0 = F.softmax(self.linear_4(out_reshape), dim=1)
+            y0 = F.softmax(self.decode_layer_final(out_reshape), dim=1)
             y = y0.contiguous().view(all_outs.size(0), -1, y0.size(-1))
         else:
             batch_sz = z.shape[0]
@@ -101,7 +102,7 @@ class MolecularVAE(nn.Module):
                 else:
                     out, hn = self.gru_last(input.unsqueeze(1), hn)
 
-                sm_out = F.softmax(self.linear_4(out), dim=1)
+                sm_out = F.softmax(self.decode_layer_final(out), dim=1)
                 samples = torch.distributions.Categorical(
                     sm_out).sample()
 
@@ -119,6 +120,6 @@ class MolecularVAE(nn.Module):
         return y
 
     def forward(self, x, idx_tensor: torch.Tensor = None):
-        z_mean, z_logvar = self.encode(x)
-        z = self.sampling(z_mean, z_logvar)
-        return self.decode(z, idx_tensor), z_mean, z_logvar
+        z_mean, z_sd = self.encode(x)
+        z = self.sampling(z_mean, z_sd)
+        return self.decode(z, idx_tensor), z_mean, z_sd

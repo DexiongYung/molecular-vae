@@ -25,7 +25,7 @@ parser.add_argument('--batch_size', help='batch_size', type=int, default=400)
 parser.add_argument('--latent', help='latent_size', type=int, default=200)
 parser.add_argument(
     '--rnn_hidd', help='unit_size of rnn cell', type=int, default=812)
-parser.add_argument('--mlp_encod', help='MLP encoder size',
+parser.add_argument('--mlp_encode', help='MLP encoder size',
                     type=int, default=512)
 parser.add_argument(
     '--word_embed', help='Word embedding size', type=int, default=200)
