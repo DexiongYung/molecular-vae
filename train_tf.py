@@ -1,30 +1,30 @@
 from __future__ import print_function
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.utils.data
+import os
+import json
 import gzip
+import torch
 import pandas
 import string
-import numpy as np
 import argparse
-import json
-import os
+import numpy as np
+import torch.nn as nn
+import torch.utils.data
 import torch.optim as optim
-from model.MolecularVAE_TF import *
-from torch.optim.lr_scheduler import ReduceLROnPlateau
+import torch.nn.functional as F
 from os import path
 from utilities import *
+from model.MolecularVAE_TF import *
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--name',
-                    help='Session name', type=str, default='argsparse')
+                    help='Session name', type=str, default='TF')
 parser.add_argument('--max_name_length',
                     help='Max name generation length', type=int, default=30)
-parser.add_argument('--batch_size', help='batch_size', type=int, default=200)
+parser.add_argument('--batch_size', help='batch_size', type=int, default=400)
 parser.add_argument('--latent', help='latent_size', type=int, default=200)
 parser.add_argument(
-    '--rnn_hidd', help='unit_size of rnn cell', type=int, default=512)
+    '--rnn_hidd', help='unit_size of rnn cell', type=int, default=812)
 parser.add_argument('--mlp_encod', help='MLP encoder size',
                     type=int, default=512)
 parser.add_argument(
@@ -32,9 +32,9 @@ parser.add_argument(
 parser.add_argument(
     '--num_layers', help='number of rnn layer', type=int, default=3)
 parser.add_argument('--num_epochs', help='epochs', type=int, default=1000)
-parser.add_argument('--conv_kernals', nargs='+', default=[9, 9, 11])
-parser.add_argument('--conv_in_sz', nargs='+', default=[9, 9])
-parser.add_argument('--conv_out_sz', nargs='+', default=[9, 9, 10])
+parser.add_argument('--conv_kernals', nargs='+', default=[4, 4, 16])
+parser.add_argument('--conv_in_sz', nargs='+', default=[4, 4])
+parser.add_argument('--conv_out_sz', nargs='+', default=[4, 4, 5])
 parser.add_argument('--eps', help='error from sampling',
                     type=float, default=1e-2)
 parser.add_argument('--lr', help='learning rate', type=float, default=1e-12)
